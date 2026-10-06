@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0d1117">
+<title>runtime diagnostics</title>
+
+<style>
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: Consolas, Monaco, "Courier New", monospace;
+    overflow: hidden;
+}
+
+#app, #fatal {
+    position: fixed;
+    inset: 0;
+    padding: 22px 18px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.65;
+}
+
+.header {
+    color: #8b949e;
+    margin-bottom: 18px;
+}
+
+.ok { color: #7ee787; }
+.warn { color: #d29922; }
+.error { color: #f85149; }
+.dim { color: #6e7681; }
+.value { color: #e6edf3; }
+
+.separator {
+    height: 1px;
+    background: #21262d;
+    margin: 14px 0;
+}
+
+#cursor {
+    display: inline-block;
+    width: 7px;
+    height: 13px;
+    background: #8b949e;
+    vertical-align: middle;
+    animation: blink .8s infinite;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+#fatal {
+    display: none;
+}
+
+#ending {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: #000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+}
+
+.skull {
+    font-size: 110px;
+    line-height: 1;
+    color: #eee;
+}
+
+.closed {
+    margin-top: 25px;
+    color: #555;
+    font-size: 11px;
+    letter-spacing: 4px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+    <div class="header">
+        runtime/diagnostics<br>
+        build 118.0.5993
+    </div>
+
+    <div id="output"></div>
+    <span id="cursor"></span>
+</div>
+
+<div id="fatal"></div>
+
+<div id="ending">
+    <div class="skull">☠</div>
+    <div class="closed">SESSION CLOSED</div>
+</div>
+
+<script>
+const FAKE = {
+    device: "POCO X5 Pro 5G",
+    model: "22101320G",
+    imei: "867214059381742",
+    localIp: "192.168.0.117",
+    publicIp: "177.52.184.93",
+    location: "Campinorte, GO",
+    coordinates: "-14.31xx / -49.15xx",
+    accuracy: "18 m"
+};
+
+const output = document.getElementById("output");
+const cursor = document.getElementById("cursor");
+const app = document.getElementById("app");
+const fatal = document.getElementById("fatal");
+const ending = document.getElementById("ending");
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function add(text = "", className = "") {
+    const div = document.createElement("div");
+    div.className = className;
+    div.textContent = text;
+    output.appendChild(div);
+    app.scrollTop = app.scrollHeight;
+}
+
+function separator() {
+    const div = document.createElement("div");
+    div.className = "separator";
+    output.appendChild(div);
+}
+
+function vibrate(pattern) {
+    try {
+        if (navigator.vibrate) navigator.vibrate(pattern);
+    } catch (_) {}
+}
+
+/*
+  Som sintetizado localmente.
+  O Chrome Android pode bloquear áudio automático
+  quando não houve interação do usuário.
+*/
+function creepySound() {
+    try {
+        const AudioContext =
+            window.AudioContext || window.webkitAudioContext;
+
+        if (!AudioContext) return;
+
+        const ctx = new AudioContext();
+        const master = ctx.createGain();
+
+        master.gain.value = 0.08;
+        master.connect(ctx.destination);
+
+        const sequence = [125, 105, 135, 95, 120];
+
+        sequence.forEach((frequency, i) => {
+            const start = ctx.currentTime + (i * 0.32);
+
+            const oscillator = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            oscillator.type = "sawtooth";
+            oscillator.frequency.setValueAtTime(frequency, start);
+            oscillator.frequency.exponentialRampToValueAtTime(
+                65,
+                start + 0.24
+            );
+
+            gain.gain.setValueAtTime(0.001, start);
+            gain.gain.linearRampToValueAtTime(0.5, start + 0.025);
+            gain.gain.exponentialRampToValueAtTime(
+                0.001,
+                start + 0.26
+            );
+
+            oscillator.connect(gain);
+            gain.connect(master);
+
+            oscillator.start(start);
+            oscillator.stop(start + 0.28);
+        });
+    } catch (_) {}
+}
+
+async function diagnostics() {
+    add("initializing runtime...");
+    await sleep(650);
+
+    add("loading environment provider...");
+    await sleep(500);
+
+    add("checking renderer...");
+    await sleep(450);
+
+    add("renderer initialized", "ok");
+    await sleep(600);
+
+    separator();
+
+    add("environment");
+    await sleep(300);
+
+    add("platform ............. Android");
+    await sleep(230);
+
+    add("runtime .............. Chromium");
+    await sleep(230);
+
+    const cores = navigator.hardwareConcurrency || 8;
+    add("logical processors ... " + cores);
+
+    await sleep(350);
+    add("graphics context ..... initialized", "ok");
+
+    await sleep(800);
+    separator();
+
+    add("querying device provider...");
+    await sleep(800);
+
+    add("provider response received", "ok");
+    await sleep(450);
+
+    add("device ............... " + FAKE.device, "value");
+    await sleep(400);
+
+    add("model ................ " + FAKE.model, "value");
+
+    await sleep(850);
+    separator();
+
+    add("network interface");
+    await sleep(350);
+
+    add("local ................ " + FAKE.localIp, "value");
+    await sleep(300);
+
+    add("external ............. " + FAKE.publicIp, "value");
+
+    await sleep(900);
+
+    add("warning: provider returned extended fields", "warn");
+
+    await sleep(950);
+    add("parsing response...");
+
+    await sleep(700);
+    separator();
+
+    add("device identifier");
+    await sleep(450);
+
+    add("imei ................. " + FAKE.imei, "value");
+
+    await sleep(1500);
+
+    add("warning: restricted identifier exposed", "warn");
+    vibrate(60);
+
+    await sleep(1200);
+    separator();
+
+    add("geolocation cache");
+    await sleep(450);
+
+    add("location ............. " + FAKE.location, "value");
+    await sleep(400);
+
+    add("coordinates .......... " + FAKE.coordinates, "value");
+    await sleep(350);
+
+    add("accuracy ............. ± " + FAKE.accuracy, "value");
+
+    await sleep(1600);
+
+    add(
+        "SecurityException: unexpected privileged context",
+        "error"
+    );
+
+    await sleep(750);
+
+    add(
+        "provider permission state mismatch",
+        "error"
+    );
+
+    await sleep(650);
+
+    add(
+        "attempting response sanitization...",
+        "warn"
+    );
+
+    await sleep(950);
+    add("clearing provider response...");
+
+    await sleep(600);
+    add("closing privileged context...");
+
+    await sleep(750);
+
+    add("ERROR: context release failed", "error");
+
+    vibrate([70, 80, 70]);
+
+    await sleep(750);
+
+    add("renderer process unresponsive", "error");
+
+    await sleep(800);
+
+    add("terminating renderer...", "error");
+
+    await sleep(800);
+
+    crash();
+}
+
+async function crash() {
+    cursor.style.display = "none";
+
+    await sleep(300);
+
+    app.style.display = "none";
+    fatal.style.display = "block";
+
+    fatal.innerHTML =
+        '<span class="error">FATAL EXCEPTION</span><br><br>' +
+        'renderer process exited unexpectedly<br>' +
+        'exit_code: -1<br>' +
+        'context: privileged_provider<br><br>' +
+        '<span class="dim">terminating session...</span>';
+
+    vibrate(100);
+
+    await sleep(1500);
+
+    fatal.innerHTML =
+        'renderer process terminated<br><br>' +
+        '<span class="dim">connection closed</span>';
+
+    await sleep(800);
+
+    fatal.style.display = "none";
+    document.body.style.background = "#000";
+
+    /*
+      Pequeno silêncio/tela preta antes do final.
+    */
+    await sleep(1400);
+
+    creepySound();
+    vibrate([100, 80, 100, 80, 250]);
+
+    ending.style.display = "flex";
+
+    await sleep(3500);
+
+    ending.style.display = "none";
+
+    /*
+      Termina completamente preto.
+      window.close() pode ser bloqueado pelo Android/Chrome.
+    */
+    document.body.innerHTML = "";
+    document.body.style.background = "#000";
+
+    try {
+        window.close();
+    } catch (_) {}
+}
+
+setTimeout(diagnostics, 800);
+</script>
+
+</body>
+</html>
